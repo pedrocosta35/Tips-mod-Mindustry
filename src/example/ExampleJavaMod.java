@@ -4,6 +4,7 @@ import arc.*;
 import arc.util.*;
 import mindustry.*;
 import mindustry.content.*;
+import mindustry.entities.bullet.BulletType;
 import mindustry.game.EventType.*;
 import mindustry.game.SpawnGroup;
 import mindustry.gen.*;
