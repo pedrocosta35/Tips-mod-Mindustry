@@ -2,7 +2,8 @@ package example;
 
 import arc.*;
 import arc.util.*;
-import mindustry.entities.bullet.BulletType;
+import mindustry.*;
+import mindustry.content.*;
 import mindustry.game.EventType.*;
 import mindustry.game.SpawnGroup;
 import mindustry.gen.*;
@@ -20,16 +21,16 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import static mindustry.Vars.*;
 
 
-public class ExampleJavaMod extends Mod {
+public class ExampleJavaMod extends Mod{
 
-    public ExampleJavaMod() {
+    public ExampleJavaMod(){
         Log.info("Loaded ExampleJavaMod constructor.");
 
         //listen for game load event
         Events.on(ClientLoadEvent.class, e -> {
             //show dialog upon startup
             Time.runTask(10f, () -> {
-                BaseDialog dialog = new BaseDialog("camelo");
+                BaseDialog dialog = new BaseDialog("frog");
                 dialog.cont.add("behold").row();
                 //mod sprites are prefixed with the mod name (this mod is called 'example-java-mod' in its config)
                 dialog.cont.image(Core.atlas.find("example-java-mod-frog")).pad(20f).row();
@@ -185,7 +186,7 @@ public class ExampleJavaMod extends Mod {
     }
 
     @Override
-    public void loadContent() {
+    public void loadContent(){
         Log.info("Loading some example content.");
     }
 
