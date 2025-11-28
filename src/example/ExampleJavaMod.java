@@ -114,8 +114,10 @@ public class ExampleJavaMod extends Mod{
             ui.hudfrag.showToast(Icon.warning, "Destruction Eminent!");
         } else {
             if (playerStats.dps > 0) {
-                if (playerStats.airDps == 0)
+                if (playerStats.airDps != 0)
                     timeToKill = (enemyStats.health / playerStats.dps) + (enemyStats.airHealth / playerStats.airDps);
+                else
+                    timeToKill = enemyStats.health / playerStats.dps;
             }
             if (timeToDie <= timeToKill) {
                 if (noAmmo) {
