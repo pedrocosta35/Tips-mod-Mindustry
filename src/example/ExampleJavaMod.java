@@ -25,6 +25,8 @@ import static mindustry.Vars.*;
 public class ExampleJavaMod extends Mod{
 
     private String event;
+    private boolean isWaveAlive = true;
+    private float nrEnemies = getNrEnemies(state.wave);
 
     public ExampleJavaMod(){
         Log.info("Loaded ExampleJavaMod constructor.");
@@ -42,8 +44,20 @@ public class ExampleJavaMod extends Mod{
             });
         });
 
+        Events.on(UnitDestroyEvent.class, e ->{
+           if(e.unit.team == state.rules.waveTeam){
+               if(nrEnemies > 1){
+                   nrEnemies -= 1;
+               }else{
+                   isWaveAlive = false;
+                   //nrEnemies = getNrEnemies(state.wave);
+               }
+           }
+        });
+
         Events.on(WaveEvent.class, e -> {
             event = "Wave";
+            isWaveAlive = true;
             registerWave();
         });
 
@@ -117,9 +131,9 @@ public class ExampleJavaMod extends Mod{
         float timeToKill = 0;
         if (playerStats.airDps == 0 && enemyStats.airHealth > 0) {
             if(noAirAmmo){
-                ui.hudfrag.showToast(Icon.turret, "Turret(s) with no ammo!");
+                ui.hudfrag.showToast(Icon.turret, "Turret(s) with no ammo! \n");
             }else {
-                ui.hudfrag.showToast(Icon.defense, "You have no air defense!");
+                ui.hudfrag.showToast(Icon.defense, "You have no air defense! \n");
             }
             ui.hudfrag.showToast(Icon.warning, "Destruction Eminent!");
         } else {
@@ -131,7 +145,7 @@ public class ExampleJavaMod extends Mod{
             }
             if (timeToDie <= timeToKill) {
                 if (noAmmo) {
-                    ui.hudfrag.showToast(Icon.turret, "Turret(s) with no ammo!");
+                    ui.hudfrag.showToast(Icon.turret, "Turret(s) with no ammo! \n");
                 }
                 ui.hudfrag.showToast(Icon.warning, "Destruction Eminent!");
             } else {
@@ -181,7 +195,11 @@ public class ExampleJavaMod extends Mod{
         WaveStats stats = new WaveStats();
         //showMessage("NrEnemies before wave " + stats.nrEnemies);
         if(event ==  "Turret"){
-            int previousWave = state.wave - 1;
+            int previousWave;
+            if(isWaveAlive)
+                previousWave = state.wave - 2;
+            else
+                previousWave = state.wave - 1;
             for (SpawnGroup group : state.rules.spawns) {
                 float nrSpawned = group.getSpawned(previousWave);
                 if (nrSpawned > 0) {
@@ -216,6 +234,14 @@ public class ExampleJavaMod extends Mod{
                 stats.dps += waveDps(weapon);
             }
         }
+    }
+
+    private float getNrEnemies(int waveNr){
+        float nrSpawned = 0.0f;
+        for (SpawnGroup group : state.rules.spawns) {
+            nrSpawned += group.getSpawned(waveNr);
+        }
+        return nrSpawned;
     }
 
     @Override
