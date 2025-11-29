@@ -24,6 +24,8 @@ import static mindustry.Vars.*;
 
 public class ExampleJavaMod extends Mod{
 
+    private String event;
+
     public ExampleJavaMod(){
         Log.info("Loaded ExampleJavaMod constructor.");
 
@@ -41,8 +43,11 @@ public class ExampleJavaMod extends Mod{
         });
 
         Events.on(WaveEvent.class, e -> {
+            event = "Wave";
             registerWave();
         });
+
+
         AtomicBoolean hasBlockEvent = new AtomicBoolean(false);
         Events.run(Trigger.update, () -> { //roda a cada update to tick. Só para quando o jogo for reiniciado ou quando fazemos Events.cancel()
             if (state.rules.waves) {
@@ -52,6 +57,7 @@ public class ExampleJavaMod extends Mod{
                         Building block = e.tile.build;
                         if (block instanceof TurretBuild) {
                             Timer.schedule(() -> {
+                                event = "Turret";
                                 registerWave();
                             }, 3f);
                         }
@@ -87,6 +93,8 @@ public class ExampleJavaMod extends Mod{
         float health = 0;
         float dps = 0;
         float airDps = 0;
+        int nrTurretsWithAmmo = 0; ///////////////////////////////
+        int nrTurretsWithoutAmmo = 0; ///////////////////////////////
     }
 
     class WaveStats {
@@ -94,6 +102,7 @@ public class ExampleJavaMod extends Mod{
         float dps = 0;
         float airHealth = 0;
         UnitType type;
+        int nrEnemies = 0; ///////////////////////////////
     }
 
 
@@ -102,6 +111,7 @@ public class ExampleJavaMod extends Mod{
         noAirAmmo = false;
         WaveStats enemyStats = calculateWaveStats();
         DefenseStats playerStats = calculateDefenseStats();
+
         float timeToDie = 0;
         if (enemyStats.dps > 0) timeToDie = playerStats.health / enemyStats.dps;
         float timeToKill = 0;
@@ -128,7 +138,8 @@ public class ExampleJavaMod extends Mod{
                 ui.hudfrag.showToast(Icon.ok, "You have enough fire power to resist the wave!");
             }
         }
-        //showMessage("EnemyDPS: " + enemyStats.dps + "  ||  EnemyAirHealth: " + enemyStats.airHealth + "  ||  EnemyGroundHealth: " + enemyStats.health + "  ||  AllyHealth: " + playerStats.health + "  ||  AllyAirDPS: " + playerStats.airDps + "  ||  AllyGroundDPS: " + playerStats.dps);
+        showMessage("NrEnemies wave " + enemyStats.nrEnemies + " \n NrTurretsWithAmmo wave " + playerStats.nrTurretsWithAmmo + " \n NrTurretsWithoutAmmo wave " + playerStats.nrTurretsWithoutAmmo);
+        //showMessage("EnemyDPS: " + enemyStats.dps + "  \n  EnemyAirHealth: " + enemyStats.airHealth + "  \n  EnemyGroundHealth: " + enemyStats.health + "  \n  AllyHealth: " + playerStats.health + "  \n  AllyAirDPS: " + playerStats.airDps + "  \n  AllyGroundDPS: " + playerStats.dps + "  \n  nrEnemies: " + enemyStats.nrEnemies + "  \n  nrTurretsWithAmmo: " + playerStats.nrTurretsWithAmmo + "  \n  nrTurretsWithoutAmmo: " + playerStats.nrTurretsWithoutAmmo);
     }
 
     private boolean noAmmo = false;
@@ -136,6 +147,7 @@ public class ExampleJavaMod extends Mod{
 
     private DefenseStats calculateDefenseStats() {
         DefenseStats stats = new DefenseStats();
+        //showMessage("NrTurretsWithAmmo before wave " + stats.nrTurretsWithAmmo + " \n NrTurretsWithoutAmmo before wave " + stats.nrTurretsWithoutAmmo);
         for (Building b : Groups.build) {
             if (b.team == player.team()) {
                 if (b instanceof TurretBuild) {
@@ -149,43 +161,61 @@ public class ExampleJavaMod extends Mod{
                             stats.dps += turretDps(((TurretBuild) b));
                             stats.airDps += turretDps(((TurretBuild) b));
                         }
+                        stats.nrTurretsWithAmmo ++;
                     } else {
                         if(!((Turret) b.block).targetGround && ((Turret) b.block).targetAir ){
                             noAirAmmo = true;
                         }else{
                             noAmmo = true;
                         }
+                        stats.nrTurretsWithoutAmmo ++;
                     }
                 }
             }
         }
+        //showMessage("NrTurretsWithAmmo after wave " + stats.nrTurretsWithAmmo + " \n NrTurretsWithoutAmmo after wave " + stats.nrTurretsWithoutAmmo);
         return stats;
     }
 
     private WaveStats calculateWaveStats() {
         WaveStats stats = new WaveStats();
-        int currentWave = state.wave;
-        for (SpawnGroup group : state.rules.spawns) {
-            float nrSpawned = group.getSpawned(currentWave);
-            if (nrSpawned > 0) {
-                UnitType type = group.type;
-                stats.type = type;
-                if (type.flying) {
-                    stats.airHealth += (type.health  + type.sample.shield) * nrSpawned;
-                } else {
-                    stats.health += (type.health  + type.sample.shield) * nrSpawned;
+        //showMessage("NrEnemies before wave " + stats.nrEnemies);
+        if(event ==  "Turret"){
+            int previousWave = state.wave - 1;
+            for (SpawnGroup group : state.rules.spawns) {
+                float nrSpawned = group.getSpawned(previousWave);
+                if (nrSpawned > 0) {
+                    setWaveStatus(stats, group.type, nrSpawned);
                 }
-                if (type.weapons.size > 0) {
-                    for (Weapon weapon : type.weapons) {
-                        stats.dps += waveDps(weapon);
-                    }
-                }
-                if(nrSpawned == 1){
-                    showMessage("Foi criado um spawnGroup com 1 elemento do tipo " + type + "   " + type.name + " tem airHealth de " + (type.health + type.sample.shield)+ " e ele voa? " + type.flying);
+            }
+        }else{
+            int i = 0;
+            for(Unit u : Groups.unit){
+                if(u.team == state.rules.waveTeam) {
+                    showMessage("" + i);
+                    i++;
+                    setWaveStatus(stats, u.type, 1); //1?
                 }
             }
         }
+
+        //showMessage("NrEnemies after wave " + stats.nrEnemies);
         return stats;
+    }
+
+    private void setWaveStatus(WaveStats stats, UnitType type, float nrSpawned) {
+        stats.nrEnemies += nrSpawned; ///////////////////////////////
+        stats.type = type;
+        if (type.flying) {
+            stats.airHealth += (type.health  + type.sample.shield) * nrSpawned;
+        } else {
+            stats.health += (type.health  + type.sample.shield) * nrSpawned;
+        }
+        if (type.weapons.size > 0) {
+            for (Weapon weapon : type.weapons) {
+                stats.dps += waveDps(weapon);
+            }
+        }
     }
 
     @Override
