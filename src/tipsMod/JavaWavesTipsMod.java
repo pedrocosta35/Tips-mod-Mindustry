@@ -11,7 +11,9 @@ import mindustry.type.UnitType;
 import mindustry.type.Weapon;
 import mindustry.world.blocks.defense.turrets.*;
 import mindustry.world.blocks.defense.turrets.Turret.TurretBuild;
+
 import java.util.concurrent.atomic.AtomicBoolean;
+
 import static mindustry.Vars.*;
 
 
@@ -72,12 +74,12 @@ public class JavaWavesTipsMod extends Mod {
         return damage * fireRate;
     }
 
-    private record DefenseStats(float health, float dps, float airDps) {}
+    private record DefenseStats(float health, float groundDps, float airDps) {}
 
-    private record WaveStats(float health, float dps, float airHealth, UnitType type) {}
+    private record WaveStats(float health, float airHealth, float dps, UnitType type) {}
 
-    public void registerWave() {
-        noAmmo = false;
+    private void registerWave() {
+        noGroundAmmo = false;
         noAirAmmo = false;
         WaveStats enemyStats = calculateWaveStats();
         DefenseStats playerStats = calculateDefenseStats();
@@ -85,62 +87,65 @@ public class JavaWavesTipsMod extends Mod {
         float timeToDie = 0;
         if (enemyStats.dps() > 0) timeToDie = playerStats.health() / enemyStats.dps();
         float timeToKill = 0;
-        if (playerStats.airDps() == 0 && enemyStats.airHealth() > 0) {
+        if (playerStats.airDps() == 0 && enemyStats.airHealth() > 0) { //Player has no air targeting defense and air enemies spawn in this wave
             if (noAirAmmo) {
                 ui.hudfrag.showToast(Icon.turret, "Turret(s) with no ammo!");
             } else {
                 ui.hudfrag.showToast(Icon.defense, "You have no air defense!");
             }
             ui.hudfrag.showToast(Icon.warning, "Destruction Eminent!");
-        } else {
-            if (playerStats.dps() > 0) {
-                if (playerStats.airDps() != 0)
-                    timeToKill = (enemyStats.health() / playerStats.dps()) + (enemyStats.airHealth() / playerStats.airDps());
+        } else { //Player has air targeting defense or no air enemies spawn in this wave
+            if (playerStats.groundDps() > 0) {
+                if (playerStats.airDps() > 0)
+                    timeToKill = (enemyStats.health() / playerStats.groundDps()) + (enemyStats.airHealth() / playerStats.airDps());
                 else
-                    timeToKill = enemyStats.health() / playerStats.dps();
+                    timeToKill = enemyStats.health() / playerStats.groundDps();
             }
-            if (timeToDie <= timeToKill) {
-                if (noAmmo) {
+            if (timeToDie <= timeToKill) { //The player defense turrets will be destroyed before defeating the enemies
+                if (noGroundAmmo) {
                     ui.hudfrag.showToast(Icon.turret, "Turret(s) with no ammo! \n");
                 }
                 ui.hudfrag.showToast(Icon.warning, "Destruction Eminent!");
-            } else {
+            } else { //The player defense turrets will defeat the enemies before being destroyed
                 ui.hudfrag.showToast(Icon.ok, "You have enough fire power to resist the wave!");
             }
         }
     }
 
-    private boolean noAmmo = false;
+    private boolean noGroundAmmo = false;
     private boolean noAirAmmo = false;
 
     private DefenseStats calculateDefenseStats() {
         float health = 0.0f;
-        float dps = 0.0f;
+        float groundDps = 0.0f;
         float airDps = 0.0f;
         for (Building b : Groups.build) {
             if (b.team == player.team()) {
                 if (b instanceof TurretBuild) {
-                    if (((TurretBuild) b).totalAmmo > 0) {
+                    if (((TurretBuild) b).totalAmmo > 0) { //The building b is from the player team and is a turret with ammo
                         health += b.health;
-                        if (!((Turret) b.block).targetAir && ((Turret) b.block).targetGround) {
-                            dps += turretDps(((TurretBuild) b));
-                        } else if (!((Turret) b.block).targetGround && ((Turret) b.block).targetAir) {
+                        if (!((Turret) b.block).targetGround && ((Turret) b.block).targetAir) {
+                            airDps += turretDps(((TurretBuild) b));
+                        } else if (((Turret) b.block).targetGround && ((Turret) b.block).targetAir) {
+                            groundDps += turretDps(((TurretBuild) b));
                             airDps += turretDps(((TurretBuild) b));
                         } else {
-                            dps += turretDps(((TurretBuild) b));
-                            airDps += turretDps(((TurretBuild) b));
+                            groundDps += turretDps(((TurretBuild) b));
                         }
-                    } else {
+                    } else { //The building b is from the player team and is a turret without ammo
                         if (!((Turret) b.block).targetGround && ((Turret) b.block).targetAir) {
                             noAirAmmo = true;
+                        } else if (((Turret) b.block).targetGround && ((Turret) b.block).targetAir) {
+                            noAirAmmo = true;
+                            noGroundAmmo = true;
                         } else {
-                            noAmmo = true;
+                            noGroundAmmo = true;
                         }
                     }
                 }
             }
         }
-        return new DefenseStats(health, dps, airDps);
+        return new DefenseStats(health, groundDps, airDps);
     }
 
     private WaveStats calculateWaveStats() {
@@ -148,12 +153,10 @@ public class JavaWavesTipsMod extends Mod {
         float dps = 0.0f;
         float airHealth = 0.0f;
         UnitType type = null;
-        if (event.equals("Turret")) {
+        if (event.equals("Turret")) { //A turret was constructed
             int previousWave;
-            if (isWaveAlive)
-                previousWave = state.wave - 2;
-            else
-                previousWave = state.wave - 1;
+            if (isWaveAlive) previousWave = state.wave - 2; //Iterate over the current wave if the wave is still alive
+            else previousWave = state.wave - 1; //Iterate over the next wave if the wave is not alive anymore
             for (SpawnGroup group : state.rules.spawns) {
                 float nrSpawned = group.getSpawned(previousWave);
                 if (nrSpawned > 0) {
@@ -170,7 +173,7 @@ public class JavaWavesTipsMod extends Mod {
                     }
                 }
             }
-        } else {
+        } else { //A wave was spawned
             for (Unit u : Groups.unit) {
                 if (u.team == state.rules.waveTeam) {
                     type = u.type;
@@ -187,7 +190,7 @@ public class JavaWavesTipsMod extends Mod {
                 }
             }
         }
-        return new WaveStats(health, dps, airHealth, type);
+        return new WaveStats(health, airHealth, dps, type);
     }
 
     private float getNrEnemies(int waveNr) {
