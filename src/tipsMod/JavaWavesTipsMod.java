@@ -176,6 +176,7 @@ public class JavaWavesTipsMod extends Mod {
         } else { //A wave was spawned
             for (Unit u : Groups.unit) {
                 if (u.team == state.rules.waveTeam) {
+                    nrEnemies += 1;
                     type = u.type;
                     if (type.flying) {
                         airHealth += (type.health + type.sample.shield);
