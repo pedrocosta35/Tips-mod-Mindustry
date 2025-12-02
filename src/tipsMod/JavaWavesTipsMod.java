@@ -93,7 +93,7 @@ public class JavaWavesTipsMod extends Mod {
             } else {
                 ui.hudfrag.showToast(Icon.defense, "You have no air defense!");
             }
-            ui.hudfrag.showToast(Icon.warning, "Destruction Eminent!");
+            ui.hudfrag.showToast(Icon.warning, "Destruction Imminent!");
         } else { //Player has air targeting defense or no air enemies spawn in this wave
             if (playerStats.groundDps() > 0) {
                 if (playerStats.airDps() > 0)
@@ -103,9 +103,9 @@ public class JavaWavesTipsMod extends Mod {
             }
             if (timeToDie <= timeToKill) { //The player defense turrets will be destroyed before defeating the enemies
                 if (noGroundAmmo) {
-                    ui.hudfrag.showToast(Icon.turret, "Turret(s) with no ammo! \n");
+                    ui.hudfrag.showToast(Icon.turret, "Turret(s) with no ammo!");
                 }
-                ui.hudfrag.showToast(Icon.warning, "Destruction Eminent!");
+                ui.hudfrag.showToast(Icon.warning, "Destruction Imminent!");
             } else { //The player defense turrets will defeat the enemies before being destroyed
                 ui.hudfrag.showToast(Icon.ok, "You have enough fire power to resist the wave!");
             }
