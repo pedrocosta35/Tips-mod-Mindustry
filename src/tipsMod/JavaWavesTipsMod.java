@@ -12,8 +12,6 @@ import mindustry.type.Weapon;
 import mindustry.world.blocks.defense.turrets.*;
 import mindustry.world.blocks.defense.turrets.Turret.TurretBuild;
 
-import java.util.concurrent.atomic.AtomicBoolean;
-
 import static mindustry.Vars.*;
 
 
@@ -30,6 +28,9 @@ public class JavaWavesTipsMod extends Mod {
                 if (nrEnemies > 1) {
                     nrEnemies -= 1;
                 } else {
+                    nrEnemies--;
+                    event = "Unit";
+                    registerWave();
                     isWaveAlive = false;
                 }
             }
@@ -41,23 +42,25 @@ public class JavaWavesTipsMod extends Mod {
             registerWave();
         });
 
-        AtomicBoolean hasBlockEvent = new AtomicBoolean(false);
-        Events.run(Trigger.update, () -> {
-            if (state.rules.waves) {
-                if (!hasBlockEvent.get()) {
-                    hasBlockEvent.set(true);
+        //AtomicBoolean hasBlockEvent = new AtomicBoolean(false);
+        //Events.run(Trigger.update, () -> {
+            //if (state.rules.waves) {
+                //if (!hasBlockEvent.get()) {
+                    //hasBlockEvent.set(true);
                     Events.on(BlockBuildEndEvent.class, e -> {
                         Building block = e.tile.build;
                         if (block instanceof TurretBuild) {
-                            Timer.schedule(() -> {
-                                event = "Turret";
-                                registerWave();
-                            }, 3f);
+                            if(state.rules.waves){
+                                Timer.schedule(() -> {
+                                    event = "Turret";
+                                    registerWave();
+                                }, 3f);
+                            }
                         }
                     });
-                }
-            }
-        });
+                //}
+            //}
+        //});
     }
 
     private float turretDps(TurretBuild t) {
@@ -83,7 +86,6 @@ public class JavaWavesTipsMod extends Mod {
         noAirAmmo = false;
         WaveStats enemyStats = calculateWaveStats();
         DefenseStats playerStats = calculateDefenseStats();
-
         float timeToDie = 0;
         if (enemyStats.dps() > 0) timeToDie = playerStats.health() / enemyStats.dps();
         float timeToKill = 0;
@@ -153,12 +155,14 @@ public class JavaWavesTipsMod extends Mod {
         float dps = 0.0f;
         float airHealth = 0.0f;
         UnitType type = null;
-        if (event.equals("Turret")) { //A turret was constructed
+        if (event.equals("Turret") || event.equals("Unit")) { //A turret was constructed
             int previousWave;
+            float a = 0.0f;
             if (isWaveAlive) previousWave = state.wave - 2; //Iterate over the current wave if the wave is still alive
             else previousWave = state.wave - 1; //Iterate over the next wave if the wave is not alive anymore
             for (SpawnGroup group : state.rules.spawns) {
                 float nrSpawned = group.getSpawned(previousWave);
+                a += nrSpawned;
                 if (nrSpawned > 0) {
                     type = group.type;
                     if (type.flying) {
@@ -173,10 +177,12 @@ public class JavaWavesTipsMod extends Mod {
                     }
                 }
             }
+            ui.hudfrag.showToast("previousWave = " + a);
         } else { //A wave was spawned
             for (Unit u : Groups.unit) {
                 if (u.team == state.rules.waveTeam) {
-                    nrEnemies += 1;
+                    if(event.equals("Wave"))
+                        nrEnemies += 1;
                     type = u.type;
                     if (type.flying) {
                         airHealth += (type.health + type.sample.shield);
