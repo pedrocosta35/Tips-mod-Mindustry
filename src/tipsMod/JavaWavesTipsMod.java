@@ -17,7 +17,7 @@ import static mindustry.Vars.*;
 
 public class JavaWavesTipsMod extends Mod {
     private String event;
-    private boolean isWaveAlive = true;
+    private boolean isWaveAlive = false;
     private float nrEnemies = getNrEnemies(state.wave);
 
     public JavaWavesTipsMod() {
@@ -30,8 +30,8 @@ public class JavaWavesTipsMod extends Mod {
                 } else {
                     nrEnemies--;
                     event = "Unit";
-                    registerWave();
                     isWaveAlive = false;
+                    registerWave();
                 }
             }
         });
@@ -42,25 +42,17 @@ public class JavaWavesTipsMod extends Mod {
             registerWave();
         });
 
-        //AtomicBoolean hasBlockEvent = new AtomicBoolean(false);
-        //Events.run(Trigger.update, () -> {
-            //if (state.rules.waves) {
-                //if (!hasBlockEvent.get()) {
-                    //hasBlockEvent.set(true);
-                    Events.on(BlockBuildEndEvent.class, e -> {
-                        Building block = e.tile.build;
-                        if (block instanceof TurretBuild) {
-                            if(state.rules.waves){
-                                Timer.schedule(() -> {
-                                    event = "Turret";
-                                    registerWave();
-                                }, 3f);
-                            }
-                        }
-                    });
-                //}
-            //}
-        //});
+        Events.on(BlockBuildEndEvent.class, e -> {
+            Building block = e.tile.build;
+            if (block instanceof TurretBuild) {
+                if(state.rules.waves){
+                    Timer.schedule(() -> {
+                        event = "Turret";
+                        registerWave();
+                        }, 3f);
+                }
+            }
+        });
     }
 
     private float turretDps(TurretBuild t) {
@@ -157,12 +149,11 @@ public class JavaWavesTipsMod extends Mod {
         UnitType type = null;
         if (event.equals("Turret") || event.equals("Unit")) { //A turret was constructed
             int previousWave;
-            float a = 0.0f;
             if (isWaveAlive) previousWave = state.wave - 2; //Iterate over the current wave if the wave is still alive
-            else previousWave = state.wave - 1; //Iterate over the next wave if the wave is not alive anymore
+            else previousWave = state.wave - 1;//Iterate over the next wave if the wave is not alive anymore
+            if(previousWave == 0) previousWave = state.wave;
             for (SpawnGroup group : state.rules.spawns) {
                 float nrSpawned = group.getSpawned(previousWave);
-                a += nrSpawned;
                 if (nrSpawned > 0) {
                     type = group.type;
                     if (type.flying) {
@@ -177,12 +168,10 @@ public class JavaWavesTipsMod extends Mod {
                     }
                 }
             }
-            ui.hudfrag.showToast("previousWave = " + a);
         } else { //A wave was spawned
             for (Unit u : Groups.unit) {
                 if (u.team == state.rules.waveTeam) {
-                    if(event.equals("Wave"))
-                        nrEnemies += 1;
+                    nrEnemies += 1;
                     type = u.type;
                     if (type.flying) {
                         airHealth += (type.health + type.sample.shield);
