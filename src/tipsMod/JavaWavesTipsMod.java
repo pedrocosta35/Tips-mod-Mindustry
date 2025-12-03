@@ -49,7 +49,7 @@ public class JavaWavesTipsMod extends Mod {
                     Timer.schedule(() -> {
                         event = "Turret";
                         registerWave();
-                        }, 3f);
+                    }, 3f);
                 }
             }
         });
@@ -78,7 +78,8 @@ public class JavaWavesTipsMod extends Mod {
         noAirAmmo = false;
         WaveStats enemyStats = calculateWaveStats();
         DefenseStats playerStats = calculateDefenseStats();
-        DefenseCalculator.Result result = DefenseCalculator.calculateDefenseStats(noGroundAmmo, noAirAmmo, playerStats, enemyStats);
+        DefenseCalculator calculator = new DefenseCalculator(playerStats, enemyStats);
+        DefenseCalculator.Result result = calculator.calculateDefenseStats(noGroundAmmo, noAirAmmo);
         if (result == DefenseCalculator.Result.AMMO_WARNING) {
             ui.hudfrag.showToast(Icon.turret, "Turret(s) with no ammo!");
             ui.hudfrag.showToast(Icon.warning, "Destruction Imminent!");
