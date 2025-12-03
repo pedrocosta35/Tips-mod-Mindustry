@@ -69,40 +69,26 @@ public class JavaWavesTipsMod extends Mod {
         return damage * fireRate;
     }
 
-    private record DefenseStats(float health, float groundDps, float airDps) {}
+    record DefenseStats(float health, float groundDps, float airDps) {}
 
-    private record WaveStats(float health, float airHealth, float dps, UnitType type) {}
+    record WaveStats(float health, float airHealth, float dps) {}
 
     private void registerWave() {
         noGroundAmmo = false;
         noAirAmmo = false;
         WaveStats enemyStats = calculateWaveStats();
         DefenseStats playerStats = calculateDefenseStats();
-        float timeToDie = 0;
-        if (enemyStats.dps() > 0) timeToDie = playerStats.health() / enemyStats.dps();
-        float timeToKill = 0;
-        if (playerStats.airDps() == 0 && enemyStats.airHealth() > 0) { //Player has no air targeting defense and air enemies spawn in this wave
-            if (noAirAmmo) {
-                ui.hudfrag.showToast(Icon.turret, "Turret(s) with no ammo!");
-            } else {
-                ui.hudfrag.showToast(Icon.defense, "You have no air defense!");
-            }
+        DefenseCalculator.Result result = DefenseCalculator.calculateDefenseStats(noGroundAmmo, noAirAmmo, playerStats, enemyStats);
+        if (result == DefenseCalculator.Result.AMMO_WARNING) {
+            ui.hudfrag.showToast(Icon.turret, "Turret(s) with no ammo!");
             ui.hudfrag.showToast(Icon.warning, "Destruction Imminent!");
-        } else { //Player has air targeting defense or no air enemies spawn in this wave
-            if (playerStats.groundDps() > 0) {
-                if (playerStats.airDps() > 0)
-                    timeToKill = (enemyStats.health() / playerStats.groundDps()) + (enemyStats.airHealth() / playerStats.airDps());
-                else
-                    timeToKill = enemyStats.health() / playerStats.groundDps();
-            }
-            if (timeToDie <= timeToKill) { //The player defense turrets will be destroyed before defeating the enemies
-                if (noGroundAmmo) {
-                    ui.hudfrag.showToast(Icon.turret, "Turret(s) with no ammo!");
-                }
-                ui.hudfrag.showToast(Icon.warning, "Destruction Imminent!");
-            } else { //The player defense turrets will defeat the enemies before being destroyed
-                ui.hudfrag.showToast(Icon.ok, "You have enough fire power to resist the wave!");
-            }
+        } else if (result == DefenseCalculator.Result.NO_AIR_DEFENSE_WARNING) {
+            ui.hudfrag.showToast(Icon.defense, "You have no air defense!");
+            ui.hudfrag.showToast(Icon.warning, "Destruction Imminent!");
+        } else if (result == DefenseCalculator.Result.DESTRUCTION) {
+            ui.hudfrag.showToast(Icon.warning, "Destruction Imminent!");
+        } else if (result == DefenseCalculator.Result.RESIST) {
+            ui.hudfrag.showToast(Icon.ok, "You have enough fire power to resist the wave!");
         }
     }
 
@@ -186,7 +172,7 @@ public class JavaWavesTipsMod extends Mod {
                 }
             }
         }
-        return new WaveStats(health, airHealth, dps, type);
+        return new WaveStats(health, airHealth, dps);
     }
 
     private float getNrEnemies(int waveNr) {
